@@ -1,0 +1,15 @@
+{
+  "name": "game-scores",
+  "version": "1.0.0",
+  "description": "A simple server used to track high scores",
+  "main": "index.js",
+  "scripts": {
+    "server": "node index.js"
+  },
+  "author": "James Lambert",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1",
+    "sqlite3": "^5.0.2"
+  }
+}
