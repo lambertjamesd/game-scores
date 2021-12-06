@@ -1,7 +1,7 @@
 const express = require('express');
-const repository = require('./repository');
-const userRoutes = require('./user-routes');
-const scoreRoutes = require('./score-routes');
+const repository = require('./src/repository');
+const userRoutes = require('./src/user-routes');
+const scoreRoutes = require('./src/score-routes');
 
 const app = express();
 const port = process.env.PORT || 3030;
