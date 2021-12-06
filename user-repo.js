@@ -4,10 +4,10 @@ const auth = require('./auth');
 
 async function setup(repo) {
     await repoCommands.run(repo, `CREATE TABLE IF NOT EXISTS users (
-        id            INTEGER  PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
-        username      CHAR(32) NOT NULL,
-        password_hash CHAR(64) NOT NULL,
-        password_salt CHAR(32) NOT NULL
+        id            INTEGER  PRIMARY KEY AUTOINCREMENT,
+        username      TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
+        password_salt TEXT NOT NULL
     )`);
 
     await repoCommands.run(repo, `CREATE UNIQUE INDEX IF NOT EXISTS idx_username ON users(username)`);

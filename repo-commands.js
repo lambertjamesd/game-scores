@@ -22,3 +22,15 @@ exports.get = (repo, query, statements) => {
         });
     });
 }
+
+exports.all = (repo, query, statements) => {
+    return new Promise((resolve, reject) => {
+        repo.db.all(query, statements, (err, row) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(row);
+            }
+        });
+    });
+}
