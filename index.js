@@ -1,6 +1,7 @@
 const express = require('express');
 const repository = require('./repository');
 const userRoutes = require('./user-routes');
+const scoreRoutes = require('./score-routes');
 
 const app = express();
 const port = process.env.PORT || 3030;
@@ -13,6 +14,7 @@ repository.buildRepository('db/db.sqlite3').then((repo) => {
     });
 
     userRoutes.setup(app, repo);
+    scoreRoutes.setup(app, repo);
     
     app.listen(port, () => {
         console.log(`App listening on ${port}`);

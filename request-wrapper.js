@@ -34,7 +34,7 @@ function validateSchema(schema, obj, keyPath) {
 
 function simpleRequestWrapper(schema, authRequired, callback) {
     return async (req, res) => {
-        const validationResult = validateSchema(schema, req.body);
+        const validationResult = schema && validateSchema(schema, req.body);
         if (validationResult) {
             respondWithError(res, 400, validationResult);
             return;
@@ -67,10 +67,13 @@ function simpleRequestWrapper(schema, authRequired, callback) {
 
         try {
             const json = await callback(req, res, authData);
-            res.status(200);
-            res.send(JSON.stringify(json));
+
+            if (json) {
+                res.status(200);
+                res.send(JSON.stringify(json));
+            }
         } catch (err) {
-            res.status(500).send(String(err));
+            res.status(500).send(String(err.stack));
         }
     }
 }
