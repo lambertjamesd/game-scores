@@ -3,6 +3,9 @@ const auth = require('./src/auth');
 const repository = require('./src/repository');
 const userRoutes = require('./src/user-routes');
 const scoreRoutes = require('./src/score-routes');
+const http = require('http');
+const https = require('https');
+const fs = require('fs');
 
 if (process.argv[2] === '--generate-admin-hash') {
     try {
@@ -15,7 +18,7 @@ if (process.argv[2] === '--generate-admin-hash') {
 }
 
 const app = express();
-const port = process.env.PORT || 3030;
+const port = +(process.env.PORT || 3030);
 
 app.use(express.json());
 
@@ -26,9 +29,15 @@ repository.buildRepository('db/db.sqlite3').then((repo) => {
 
     userRoutes.setup(app, repo);
     scoreRoutes.setup(app, repo);
+
+    var httpServer = http.createServer(app);
+    var httpsServer = https.createServer({key: fs.readFileSync('cert/game-scores.key'), cert: fs.readFileSync('cert/game-scores.crt')}, app);
     
-    app.listen(port, () => {
+    httpServer.listen(port, () => {
         console.log(`App listening on ${port}`);
+    });
+    httpsServer.listen(port + 1, () => {
+        console.log(`App (https) listening on ${port + 1}`);
     });
 }).catch((err) => {
     console.error(err);

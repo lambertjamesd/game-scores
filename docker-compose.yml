@@ -16,8 +16,10 @@ services:
       PORT: "3030"
     ports:
       - "3030:3030"
+      - "3031:3031"
     volumes:
       - "games-server-db:/usr/src/app/db"
+      - "./cert:/usr/src/app/cert"
     build:
       context: .
       dockerfile: Dockerfile
