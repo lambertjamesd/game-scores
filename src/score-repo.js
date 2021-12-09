@@ -51,6 +51,12 @@ async function deleteScore(repo, userId, scoreboardId) {
 }
 
 async function logScore(repo, userId, scoreboardId, score) {
+    const prevScore = await getRank(repo, userId, scoreboardId);
+
+    if (prevScore && prevScore.score < score) {
+        return prevScore;
+    }
+
     await deleteScore(repo, userId, scoreboardId);
     let rankLocation = await repoCommands.get(repo, `SELECT score,rank FROM scores WHERE scoreboard_id=? AND score > ? ORDER BY score ASC LIMIT 1`, [scoreboardId, score]);
 
