@@ -5,6 +5,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm install
 
-COPY . .
+COPY src src
+COPY index.js index.js
 
 CMD ["npm", "run", "server"]

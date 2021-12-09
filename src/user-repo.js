@@ -11,6 +11,10 @@ async function setup(repo) {
     )`);
 
     await repoCommands.run(repo, `CREATE UNIQUE INDEX IF NOT EXISTS idx_username ON users(username)`);
+    
+    await repoCommands.run(repo, `CREATE TABLE IF NOT EXISTS admins (
+        user_id            INTEGER  PRIMARY KEY
+    )`);
 };
 
 async function getUser(repo, userId) {
@@ -54,8 +58,38 @@ async function authenticateUser(repo, username, password) {
     return getUser(repo, userInfo.id);
 }
 
+async function isUserAdmin(repo, userId) {
+    return !!await repoCommands.get(repo, `SELECT user_id FROM admins WHERE user_id=?`, [userId]);
+}
+
+async function giveAdminPermissions(repo, username, usernameHash) {
+    const isValidHash = auth.hashPassword(username, '') === usernameHash;
+
+    if (!isValidHash) {
+        return false;
+    }
+
+    const user = await repoCommands.get(repo, `SELECT id, username FROM users WHERE username=?`, [username]);
+
+    if (!user) {
+        return false;
+    }
+
+    const isAlreadyAdmin = await isUserAdmin(repo, user.id);
+
+    if (isAlreadyAdmin) {
+        return true;
+    }
+
+    await repoCommands.run(repo, `INSERT INTO admins (user_id) VALUES (?)`, [user.id]);
+
+    return true;
+}
+
 exports.setup = setup;
 exports.createUser = createUser;
 exports.getUser = getUser;
 exports.authenticateUser = authenticateUser;
+exports.giveAdminPermissions= giveAdminPermissions;
+exports.isUserAdmin = isUserAdmin;
 exports.DuplicateUsernameError = DuplicateUsernameError;

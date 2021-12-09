@@ -1,7 +1,18 @@
 const express = require('express');
+const auth = require('./src/auth');
 const repository = require('./src/repository');
 const userRoutes = require('./src/user-routes');
 const scoreRoutes = require('./src/score-routes');
+
+if (process.argv[2] === '--generate-admin-hash') {
+    try {
+        console.log(auth.hashPassword(process.argv[3], ''));
+    } catch (error) {
+        console.error(`Failed to create has for '${process.argv[3]}'`);
+        process.exit(1);
+    }
+    process.exit(0);
+}
 
 const app = express();
 const port = process.env.PORT || 3030;

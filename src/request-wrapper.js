@@ -1,7 +1,10 @@
 const auth = require('./auth');
 
+const errorResponse = {};
+
 function respondWithError(res, errCode, err) {
     res.status(errCode).send(JSON.stringify({error: err}));
+    return errorResponse;
 }
 
 function validateSchema(schema, obj, keyPath) {
@@ -68,9 +71,17 @@ function simpleRequestWrapper(schema, authRequired, callback) {
         try {
             const json = await callback(req, res, authData);
 
+            // status code already sent
+            if (json === errorResponse) {
+                return;
+            }
+
             if (json) {
                 res.status(200);
                 res.send(JSON.stringify(json));
+            } else {
+                res.status(204);
+                res.send();
             }
         } catch (err) {
             res.status(500).send(String(err.stack));

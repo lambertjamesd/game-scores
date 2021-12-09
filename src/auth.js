@@ -27,7 +27,11 @@ function createToken(userId) {
 }
 
 function validateToken(token) {
-    return jwt.verify(token, APP_SECRET);
+    try {
+        return jwt.verify(token, APP_SECRET);
+    } catch (_) {
+        return undefined;
+    }
 }
 
 exports.hashPassword = hashPassword;
