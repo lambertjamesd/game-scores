@@ -20,6 +20,8 @@ async function setup(repo) {
 
     await repoCommands.run(repo, `CREATE INDEX IF NOT EXISTS idx_score ON scores(scoreboard_id, score)`);
     await repoCommands.run(repo, `CREATE INDEX IF NOT EXISTS idx_rank ON scores(scoreboard_id, rank)`);
+
+    repo.data.rankSemaphore = repoCommands.semaphore(1);
 };
 
 
@@ -39,15 +41,17 @@ async function getOrCreateScoreboard(repo, tag) {
 }
 
 async function deleteScore(repo, userId, scoreboardId) {
-    const rank = await repoCommands.get(repo, `SELECT rank FROM scores WHERE scoreboard_id=? AND user_id=?`, [scoreboardId, userId]);
-
-    if (!rank) {
-        // no entry to delete
-        return;
-    }
-
-    await repoCommands.run(repo, `DELETE FROM scores WHERE scoreboard_id=? AND user_id=?`, [scoreboardId, userId]);
-    await repoCommands.run(repo, `UPDATE scores SET rank=rank-1 WHERE scoreboard_id=? AND rank > ?`, [scoreboardId, rank.rank]);
+    await repo.data.rankSemaphore(async () => {
+        const rank = await repoCommands.get(repo, `SELECT rank FROM scores WHERE scoreboard_id=? AND user_id=?`, [scoreboardId, userId]);
+    
+        if (!rank) {
+            // no entry to delete
+            return;
+        }
+    
+        await repoCommands.run(repo, `DELETE FROM scores WHERE scoreboard_id=? AND user_id=?`, [scoreboardId, userId]);
+        await repoCommands.run(repo, `UPDATE scores SET rank=rank-1 WHERE scoreboard_id=? AND rank > ?`, [scoreboardId, rank.rank]);
+    });
 }
 
 async function logScore(repo, userId, scoreboardId, score) {
@@ -58,22 +62,26 @@ async function logScore(repo, userId, scoreboardId, score) {
     }
 
     await deleteScore(repo, userId, scoreboardId);
-    let rankLocation = await repoCommands.get(repo, `SELECT score,rank FROM scores WHERE scoreboard_id=? AND score > ? ORDER BY score ASC LIMIT 1`, [scoreboardId, score]);
 
-    if (!rankLocation) {
-        const count = await repoCommands.get(repo, `SELECT COUNT(*) FROM scores WHERE scoreboard_id=?`, [scoreboardId]);
-        rankLocation = {rank: count['COUNT(*)'] + 1};
-    }
-    
-    await repoCommands.run(repo, `UPDATE scores SET rank=rank+1 WHERE scoreboard_id=? AND rank >= ?`, [scoreboardId, rankLocation.rank]);
-    await repoCommands.run(repo, `INSERT INTO scores (user_id, scoreboard_id, score, rank, time) VALUES (?, ?, ?, ?, ?)`, [
-        userId,
-        scoreboardId,
-        score,
-        rankLocation.rank,
-        Date.now(),
-    ]);
-    return {rank: rankLocation.rank, score: score, user_id: userId, high_score: true};
+    return await repo.data.rankSemaphore(async () => {
+        let rankLocation = await repoCommands.get(repo, `SELECT score,rank FROM scores WHERE scoreboard_id=? AND score > ? ORDER BY score ASC LIMIT 1`, [scoreboardId, score]);
+
+        if (!rankLocation) {
+            const count = await repoCommands.get(repo, `SELECT COUNT(*) FROM scores WHERE scoreboard_id=?`, [scoreboardId]);
+            rankLocation = {rank: count['COUNT(*)'] + 1};
+        }
+        
+        await repoCommands.run(repo, `UPDATE scores SET rank=rank+1 WHERE scoreboard_id=? AND rank >= ?`, [scoreboardId, rankLocation.rank]);
+        await repoCommands.run(repo, `INSERT INTO scores (user_id, scoreboard_id, score, rank, time) VALUES (?, ?, ?, ?, ?)`, [
+            userId,
+            scoreboardId,
+            score,
+            rankLocation.rank,
+            Date.now(),
+        ]);
+        
+        return {rank: rankLocation.rank, score: score, user_id: userId, high_score: true};
+    });
 }
 
 async function getRank(repo, userId, scoreboardId) {

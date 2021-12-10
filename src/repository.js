@@ -1,19 +1,20 @@
 const sqlite3 = require('sqlite3');
-const userRepo = require('./user-repo');
-const scoreRepo = require('./score-repo');
 
-function buildRepository(filename) {
+function buildRepository(filename, setupFunctions) {
     return new Promise((resolve, reject) => {
-        var result = {};
+        var result = {
+            data: {},
+        };
 
         result.db = new sqlite3.Database(filename, (err) => {
             if (err) {
                 reject(err);
             } else {
-                Promise.all([
-                    userRepo.setup(result),
-                    scoreRepo.setup(result),
-                ]).then(() => resolve(result), reject);
+                Promise.all(setupFunctions.map(function(setup) {
+                    return setup(result);
+                })).then(function() {
+                    resolve(result);
+                }, reject);
             }
         });
     })

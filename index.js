@@ -4,6 +4,8 @@ const auth = require('./src/auth');
 const repository = require('./src/repository');
 const userRoutes = require('./src/user-routes');
 const scoreRoutes = require('./src/score-routes');
+const userRepo = require('./user-repo');
+const scoreRepo = require('./score-repo');
 const http = require('http');
 
 if (process.argv[2] === '--generate-admin-hash') {
@@ -32,7 +34,7 @@ if (corsOrigin) {
 
 app.use(express.json());
 
-repository.buildRepository('db/db.sqlite3').then((repo) => {
+repository.buildRepository('db/db.sqlite3', [userRepo.setup, scoreRepo.setup]).then((repo) => {
     app.get('/', (req, res) => {
         res.send('API is up');
     });

@@ -34,3 +34,28 @@ exports.all = (repo, query, statements) => {
         });
     });
 }
+
+exports.semaphore = (count) => {
+    let lockCount = 0;
+    const pendingRequests = [];
+    return async (callback) => {
+        if (lockCount < count) {
+            ++lockCount;
+        } else {
+            await new Promise((resolve) => {
+                pendingRequests.push(resolve);
+            });
+        }
+
+        try {
+            return await callback();
+        } finally {
+            if (pendingRequests.length) {
+                const next = pendingRequests.shift();
+                next();
+            } else {
+                --lockCount;
+            }
+        }
+    };
+}
