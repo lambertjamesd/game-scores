@@ -11,6 +11,7 @@ exports.setup = (app, repo) => {
             user_id: userId,
             score: score.score,
             rank: score.rank,
+            high_score: score.high_score,
         }
     }
 
