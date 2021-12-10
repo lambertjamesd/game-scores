@@ -73,7 +73,7 @@ async function logScore(repo, userId, scoreboardId, score) {
         rankLocation.rank,
         Date.now(),
     ]);
-    return {rank: rankLocation.rank};
+    return {rank: rankLocation.rank, score: score, user_id: userId};
 }
 
 async function getRank(repo, userId, scoreboardId) {

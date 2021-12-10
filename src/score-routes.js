@@ -3,6 +3,17 @@ const userRepo = require('./user-repo');
 const requestWrapper = require('./request-wrapper');
 
 exports.setup = (app, repo) => {
+    async function convertScoreWithUser(userId, score) {
+        const user = await userRepo.getUser(repo, userId);
+        const username = user ? user.username : `<error> user_id ${userId}`;
+        return {
+            username: username,
+            user_id: userId,
+            score: score.score,
+            rank: score.rank,
+        }
+    }
+
     app.post('/scores/:scoreboard', requestWrapper.simpleRequestWrapper({score: 'number'}, true, async (req, res, auth) => {
         if (!req.params.scoreboard) {
             return requestWrapper.respondWithError(res, 400, 'Invalid scoreboard');
@@ -14,19 +25,8 @@ exports.setup = (app, repo) => {
             return requestWrapper.respondWithError(res, 500, 'Could not create scoreboard');
         }
 
-        return await scoreRepo.logScore(repo, auth.u, scoreboard.id, req.body.score);
+        return await convertScoreWithUser(auth.u, await scoreRepo.logScore(repo, auth.u, scoreboard.id, req.body.score));
     }));
-
-    async function convertScoreWithUser(userId, score) {
-        const user = await userRepo.getUser(repo, userId);
-        const username = user ? user.username : `<error> user_id ${userId}`;
-        return {
-            username: username,
-            user_id: userId,
-            score: score.score,
-            rank: score.rank,
-        }
-    }
 
     app.get('/scores/:scoreboard', requestWrapper.simpleRequestWrapper(undefined, false, async (req, res) => {
         if (!req.params.scoreboard) {
@@ -46,7 +46,7 @@ exports.setup = (app, repo) => {
         return result;
     }));
 
-    app.get('/scores/:scoreboard/:userId', requestWrapper.simpleRequestWrapper(undefined, false, async (req, res) => {
+    app.get('/scores/:scoreboard/:username', requestWrapper.simpleRequestWrapper(undefined, false, async (req, res) => {
         if (!req.params.scoreboard) {
             return requestWrapper.respondWithError(res, 400, 'Invalid scoreboard');
         }
@@ -57,17 +57,29 @@ exports.setup = (app, repo) => {
             return requestWrapper.respondWithError(res, 404, 'Invalid scoreboard');
         }
 
-        const result = await scoreRepo.getRank(repo, +req.params.userId, scoreboard.id);
+        const user = await userRepo.lookupUserByUsername(repo, req.params.username);
+        
+        if (!user) {
+            return requestWrapper.respondWithError(res, 404, 'Invalid username');
+        }
+
+        const result = await scoreRepo.getRank(repo, user.id, scoreboard.id);
 
         if (!result) {
             return requestWrapper.respondWithError(res, 404, 'No score submitted');
         }
 
-        return await convertScoreWithUser(+req.params.userId, result);
+        return await convertScoreWithUser(user.id, result);
     }));
 
-    app.delete('/scores/:scoreboard/:userId', requestWrapper.simpleRequestWrapper(undefined, true, async (req, res, auth) => {
-        if (String(auth.u) !== req.params.userId && !await userRepo.isUserAdmin(repo, auth.u)) {
+    app.delete('/scores/:scoreboard/:username', requestWrapper.simpleRequestWrapper(undefined, true, async (req, res, auth) => {
+        const user = await userRepo.lookupUserByUsername(repo, req.params.username);
+        
+        if (!user) {
+            return requestWrapper.respondWithError(res, 404, 'Invalid username');
+        }
+
+        if (auth.u !== user.id && !await userRepo.isUserAdmin(repo, auth.u)) {
             return requestWrapper.respondWithError(res, 403, 'No permissions to delete score');
         }
         const scoreboard = await scoreRepo.getScoreboard(repo, req.params.scoreboard);
@@ -75,6 +87,7 @@ exports.setup = (app, repo) => {
         if (!scoreboard) {
             return requestWrapper.respondWithError(res, 404, 'Invalid scoreboard');
         }
-        await scoreRepo.deleteScore(repo, +req.params.userId, scoreboard.id);
+
+        await scoreRepo.deleteScore(repo, user.id, scoreboard.id);
     }));
 };

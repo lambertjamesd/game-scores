@@ -21,6 +21,10 @@ async function getUser(repo, userId) {
     return await repoCommands.get(repo, `SELECT id, username FROM users WHERE id=?`, [userId]);
 }
 
+async function lookupUserByUsername(repo, username) {
+    return await repoCommands.get(repo, `SELECT id, username FROM users WHERE username=?`, [username]);
+}
+
 class DuplicateUsernameError extends Error {
     constructor(username) {
         super(`The username '${username}' is already taken`);
