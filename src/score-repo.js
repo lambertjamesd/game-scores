@@ -54,7 +54,7 @@ async function logScore(repo, userId, scoreboardId, score) {
     const prevScore = await getRank(repo, userId, scoreboardId);
 
     if (prevScore && prevScore.score < score) {
-        return prevScore;
+        return {rank: prevScore.rank, score: prevScore.score, user_id: userId, high_score: false};
     }
 
     await deleteScore(repo, userId, scoreboardId);
@@ -73,7 +73,7 @@ async function logScore(repo, userId, scoreboardId, score) {
         rankLocation.rank,
         Date.now(),
     ]);
-    return {rank: rankLocation.rank, score: score, user_id: userId};
+    return {rank: rankLocation.rank, score: score, user_id: userId, high_score: true};
 }
 
 async function getRank(repo, userId, scoreboardId) {
