@@ -6,7 +6,6 @@ volumes:
 
 networks:
     default:
-        name: games-scores
         driver: bridge
 
 services:
@@ -14,12 +13,11 @@ services:
     container_name: "game-scores"
     environment:
       PORT: "3030"
+      CORS_ORIGIN: https://lambertjamesd.github.io
     ports:
       - "3030:3030"
-      - "3031:3031"
     volumes:
       - "games-server-db:/usr/src/app/db"
-      - "./cert:/usr/src/app/cert"
     build:
       context: .
       dockerfile: Dockerfile
