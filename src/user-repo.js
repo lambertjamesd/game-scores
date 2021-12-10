@@ -96,4 +96,5 @@ exports.getUser = getUser;
 exports.authenticateUser = authenticateUser;
 exports.giveAdminPermissions= giveAdminPermissions;
 exports.isUserAdmin = isUserAdmin;
+exports.lookupUserByUsername = lookupUserByUsername;
 exports.DuplicateUsernameError = DuplicateUsernameError;

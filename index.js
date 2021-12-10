@@ -23,7 +23,7 @@ const corsOrigin = process.env.CORS_ORIGIN;
 
 if (corsOrigin) {
     var corsOptions = {
-        origin: corsOrigin,
+        origin: corsOrigin.split(';'),
         optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
     };
 

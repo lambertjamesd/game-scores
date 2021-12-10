@@ -13,7 +13,7 @@ services:
     container_name: "game-scores"
     environment:
       PORT: "3030"
-      CORS_ORIGIN: https://lambertjamesd.github.io
+      CORS_ORIGIN: https://lambertjamesd.github.io;https://theme.lambertjamesd.com
     ports:
       - "3030:3030"
     volumes:
