@@ -46,6 +46,38 @@ async function createUser(repo, username, password) {
     }
 }
 
+async function deleteUser(repo, username) {
+    await repoCommands.run(repo, `DELETE FROM users WHERE username=?`, [username]);
+}
+
+
+async function updateUser(repo, existingUsername, newData) {
+    const fields = [];
+    const values = [];
+
+    if (newData.password) {
+        const salt = await auth.createSalt();
+        const passwordHash = auth.hashPassword(newData.password, salt);
+
+        fields.push('password_hash', 'password_salt');
+        values.push(passwordHash, salt);
+    }
+
+    if (newData.username) {
+        fields.push('username');
+        values.push(newData.username);
+    }
+    
+    if (fields.length == 0) {
+        return;
+    }
+
+    values.push(existingUsername);
+
+    await repoCommands.run(repo, `UPDATE users SET ${fields.map(field => `${field}=?`).join(', ')} WHERE username=?`, values);
+    return await lookupUserByUsername(repo, newData.username || existingUsername);
+}
+
 async function authenticateUser(repo, username, password) {
     const userInfo = await repoCommands.get(repo, `SELECT id, password_hash, password_salt FROM users WHERE username=?`, [username]);
 
@@ -92,6 +124,8 @@ async function giveAdminPermissions(repo, username, usernameHash) {
 
 exports.setup = setup;
 exports.createUser = createUser;
+exports.deleteUser = deleteUser;
+exports.updateUser = updateUser;
 exports.getUser = getUser;
 exports.authenticateUser = authenticateUser;
 exports.giveAdminPermissions= giveAdminPermissions;

@@ -4,8 +4,8 @@ const auth = require('./src/auth');
 const repository = require('./src/repository');
 const userRoutes = require('./src/user-routes');
 const scoreRoutes = require('./src/score-routes');
-const userRepo = require('./user-repo');
-const scoreRepo = require('./score-repo');
+const userRepo = require('./src/user-repo');
+const scoreRepo = require('./src/score-repo');
 const http = require('http');
 
 if (process.argv[2] === '--generate-admin-hash') {

@@ -19,7 +19,6 @@ async function setup(repo) {
     )`);
 
     await repoCommands.run(repo, `CREATE INDEX IF NOT EXISTS idx_score ON scores(scoreboard_id, score)`);
-    await repoCommands.run(repo, `CREATE INDEX IF NOT EXISTS idx_rank ON scores(scoreboard_id, rank)`);
 
     repo.data.rankSemaphore = repoCommands.semaphore(1);
 };
@@ -41,17 +40,7 @@ async function getOrCreateScoreboard(repo, tag) {
 }
 
 async function deleteScore(repo, userId, scoreboardId) {
-    await repo.data.rankSemaphore(async () => {
-        const rank = await repoCommands.get(repo, `SELECT rank FROM scores WHERE scoreboard_id=? AND user_id=?`, [scoreboardId, userId]);
-    
-        if (!rank) {
-            // no entry to delete
-            return;
-        }
-    
-        await repoCommands.run(repo, `DELETE FROM scores WHERE scoreboard_id=? AND user_id=?`, [scoreboardId, userId]);
-        await repoCommands.run(repo, `UPDATE scores SET rank=rank-1 WHERE scoreboard_id=? AND rank > ?`, [scoreboardId, rank.rank]);
-    });
+    await repoCommands.run(repo, `DELETE FROM scores WHERE scoreboard_id=? AND user_id=?`, [scoreboardId, userId]);
 }
 
 async function logScore(repo, userId, scoreboardId, score) {
@@ -61,27 +50,18 @@ async function logScore(repo, userId, scoreboardId, score) {
         return {rank: prevScore.rank, score: prevScore.score, user_id: userId, high_score: false};
     }
 
-    await deleteScore(repo, userId, scoreboardId);
-
-    return await repo.data.rankSemaphore(async () => {
-        let rankLocation = await repoCommands.get(repo, `SELECT score,rank FROM scores WHERE scoreboard_id=? AND score > ? ORDER BY score ASC LIMIT 1`, [scoreboardId, score]);
-
-        if (!rankLocation) {
-            const count = await repoCommands.get(repo, `SELECT COUNT(*) FROM scores WHERE scoreboard_id=?`, [scoreboardId]);
-            rankLocation = {rank: count['COUNT(*)'] + 1};
-        }
-        
-        await repoCommands.run(repo, `UPDATE scores SET rank=rank+1 WHERE scoreboard_id=? AND rank >= ?`, [scoreboardId, rankLocation.rank]);
-        await repoCommands.run(repo, `INSERT INTO scores (user_id, scoreboard_id, score, rank, time) VALUES (?, ?, ?, ?, ?)`, [
+    if (prevScore) {
+        await repoCommands.run(repo, `UPDATE scores SET score=?, time=? WHERE user_id=? AND scoreboard_id=?`, [score, Date.now(), userId, scoreboardId]);
+    } else {
+        await repoCommands.run(repo, `INSERT INTO scores (user_id, scoreboard_id, score, time) VALUES (?, ?, ?, ?)`, [
             userId,
             scoreboardId,
             score,
-            rankLocation.rank,
             Date.now(),
         ]);
-        
-        return {rank: rankLocation.rank, score: score, user_id: userId, high_score: true};
-    });
+    }
+    
+    return await getRank(repo, userId, scoreboardId);
 }
 
 async function getRank(repo, userId, scoreboardId) {
@@ -89,11 +69,30 @@ async function getRank(repo, userId, scoreboardId) {
         return undefined;
     }
 
-    return await repoCommands.get(repo, `SELECT score, rank FROM scores WHERE user_id=? AND scoreboard_id=?`, [userId, scoreboardId]);
+    const score = await repoCommands.get(repo, `SELECT score FROM scores WHERE user_id=? AND scoreboard_id=?`, [userId, scoreboardId]);
+
+    if (!score) {
+        return undefined;
+    }
+
+    const rank = await repoCommands.get(repo, `SELECT COUNT(*) from scores WHERE score < ? AND scoreboard_id=?`, [score.score, scoreboardId]);
+
+    return {
+        score: score.score,
+        rank: rank['COUNT(*)'] + 1,
+        user_id: userId,
+        scoreboard_id: scoreboardId,
+    }
 }
 
 async function getScores(repo, scoreboardId, afterRank, count) {
-    return await repoCommands.all(repo, `SELECT user_id, score, rank FROM scores WHERE scoreboard_id=? AND rank > ? ORDER BY RANK ASC LIMIT ?`, [scoreboardId, afterRank, count]);
+    return await repoCommands.all(repo, `SELECT user_id, score, RANK() OVER ( 
+		ORDER BY score ASC
+	) rank  FROM scores WHERE scoreboard_id=? AND rank > ? ORDER BY score ASC LIMIT ?`, [scoreboardId, afterRank, count]);
+}
+
+async function getScoresforUser(repo, userId) {
+    return await repoCommands.all(repo, `SELECT user_id, scoreboard_id, score FROM scores WHERE user_id=?`, [userId]);
 }
 
 exports.setup = setup;
@@ -103,3 +102,4 @@ exports.deleteScore = deleteScore;
 exports.logScore = logScore;
 exports.getRank = getRank;
 exports.getScores = getScores;
+exports.getScoresforUser = getScoresforUser;
