@@ -14,6 +14,14 @@ exports.setup = (app, repo) => {
                 return requestWrapper.respondWithError(res, 400, 'password is required');
             }
 
+            if (req.body.username.indexOf('@') !== -1) {
+                return requestWrapper.respondWithError(res, 400, 'do not enter email');
+            }
+            
+            if (req.body.username.indexOf(' ') !== -1) {
+                return requestWrapper.respondWithError(res, 400, 'username shouldn\'t have spaces');
+            }
+
             return await userRepo.createUser(repo, req.body.username, req.body.password);
         } catch (err) {
             if (err instanceof userRepo.DuplicateUsernameError) {
